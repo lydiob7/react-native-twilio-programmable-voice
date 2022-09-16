@@ -10,7 +10,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
-import android.os.Build;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -39,9 +38,9 @@ import com.facebook.react.bridge.ReactMethod;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.iid.FirebaseInstanceId;
-import com.google.firebase.iid.InstanceIdResult;
 
+import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.messaging.FirebaseMessaging;
 import com.twilio.audioswitch.AudioDevice;
 import com.twilio.audioswitch.AudioSwitch;
 import com.twilio.voice.AcceptOptions;
@@ -62,6 +61,7 @@ import java.util.Set;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import static com.hoxfon.react.RNTwilioVoice.EventManager.EVENT_CONNECTION_DID_CONNECT;
 import static com.hoxfon.react.RNTwilioVoice.EventManager.EVENT_CONNECTION_DID_DISCONNECT;
@@ -665,19 +665,27 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
     /*
      * Register your FCM token with Twilio to receive incoming call invites
      *
-     * If a valid google-services.json has not been provided or the FirebaseInstanceId has not been
-     * initialized the fcmToken will be null.
+     * If a valid google-services.json has not been provided then the fcmToken will be null.
      *
      */
     private void registerForCallInvites() {
-        String fcmToken = FirebaseInstanceId.getInstance().getToken();
-        if (fcmToken == null) {
+        try {
+            Task<String> token = FirebaseMessaging.getInstance().getToken();
+            String fcmToken = Tasks.await(token);
+
+            if (fcmToken == null) {
+                return;
+            }
+
+            if (BuildConfig.DEBUG) {
+                Log.i(TAG, "Registering with FCM");
+            }
+
+            Voice.register(accessToken, Voice.RegistrationChannel.FCM, fcmToken, registrationListener);
+        } catch (ExecutionException | InterruptedException e) {
+            e.printStackTrace();
             return;
         }
-        if (BuildConfig.DEBUG) {
-            Log.i(TAG, "Registering with FCM");
-        }
-        Voice.register(accessToken, Voice.RegistrationChannel.FCM, fcmToken, registrationListener);
     }
 
     /*
@@ -692,25 +700,23 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
     }
 
     private void unregisterForCallInvites() {
-        FirebaseInstanceId.getInstance().getInstanceId()
-                .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<InstanceIdResult> task) {
-                        if (!task.isSuccessful()) {
-                            Log.w(TAG, "FCM unregistration failed", task.getException());
-                            return;
-                        }
+        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(new OnCompleteListener<String>() {
+            @Override
+            public void onComplete(@NonNull Task<String> task) {
+                if (!task.isSuccessful()) {
+                    Log.w(TAG, "FCM unregistration failed", task.getException());
+                    return;
+                }
 
-                        // Get new Instance ID token
-                        String fcmToken = task.getResult().getToken();
-                        if (fcmToken != null) {
-                            if (BuildConfig.DEBUG) {
-                                Log.d(TAG, "Unregistering with FCM");
-                            }
-                            Voice.unregister(accessToken, Voice.RegistrationChannel.FCM, fcmToken, unregistrationListener);
-                        }
+                String fcmToken = task.getResult();
+                if (fcmToken != null) {
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "Unregistering with FCM");
                     }
-                });
+                    Voice.unregister(accessToken, Voice.RegistrationChannel.FCM, fcmToken, unregistrationListener);
+                }
+            }
+        });
     }
 
     public void acceptFromIntent(Intent intent) {
