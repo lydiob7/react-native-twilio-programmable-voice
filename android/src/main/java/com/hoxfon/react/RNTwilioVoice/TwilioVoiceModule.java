@@ -641,25 +641,29 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
 
     @ReactMethod
     public void initWithAccessToken(final String accessToken, Promise promise) {
-        if (accessToken.equals("")) {
-            promise.reject(new JSApplicationIllegalArgumentException("Invalid access token"));
-            return;
-        }
+        try {
+            if (accessToken.equals("")) {
+                promise.reject(new JSApplicationIllegalArgumentException("Invalid access token"));
+                return;
+            }
 
-        if(!checkPermissionForMicrophone()) {
-            promise.reject(new AssertionException("Allow microphone permission"));
-            return;
-        }
+            if(!checkPermissionForMicrophone()) {
+                promise.reject(new AssertionException("Allow microphone permission"));
+                return;
+            }
 
-        TwilioVoiceModule.this.accessToken = accessToken;
-        if (BuildConfig.DEBUG) {
-            Log.d(TAG, "initWithAccessToken()");
+            TwilioVoiceModule.this.accessToken = accessToken;
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "initWithAccessToken()");
+            }
+            registerForCallInvites();
+            WritableMap params = Arguments.createMap();
+            params.putBoolean("initialized", true);
+            promise.resolve(params);
+            startAudioSwitch();
+        } catch (Exception exception) {
+            promise.reject(exception);
         }
-        registerForCallInvites();
-        WritableMap params = Arguments.createMap();
-        params.putBoolean("initialized", true);
-        promise.resolve(params);
-        startAudioSwitch();
     }
 
     /*
