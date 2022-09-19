@@ -161,20 +161,37 @@ public class CallNotificationManager {
                 .putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, Constants.HANGUP_NOTIFICATION_ID)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-                context,
-                0,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT
-        );
+        PendingIntent pendingIntent;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+           pendingIntent = PendingIntent.getActivity(
+               context,
+               0,
+               intent,
+               PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        } else {
+            pendingIntent = PendingIntent.getActivity(
+               context,
+               0,
+               intent,
+               PendingIntent.FLAG_UPDATE_CURRENT);
+        }
 
-        PendingIntent hangupPendingIntent = PendingIntent.getBroadcast(
+        PendingIntent hangupPendingIntent;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            hangupPendingIntent= PendingIntent.getBroadcast(
                 context,
                 0,
                 new Intent(Constants.ACTION_HANGUP_CALL)
                         .putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, Constants.HANGUP_NOTIFICATION_ID),
-                PendingIntent.FLAG_UPDATE_CURRENT
-        );
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        } else {
+            hangupPendingIntent= PendingIntent.getBroadcast(
+                context,
+                0,
+                new Intent(Constants.ACTION_HANGUP_CALL)
+                        .putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, Constants.HANGUP_NOTIFICATION_ID),
+                PendingIntent.FLAG_UPDATE_CURRENT);
+        }
 
         Bundle extras = new Bundle();
         extras.putInt(Constants.INCOMING_CALL_NOTIFICATION_ID, Constants.HANGUP_NOTIFICATION_ID);
