@@ -77,12 +77,22 @@ public class CallNotificationManager {
                 .putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, Constants.MISSED_CALLS_NOTIFICATION_ID)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-                context,
-                0,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT
-        );
+        PendingIntent pendingIntent;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            pendingIntent = PendingIntent.getActivity(
+                    context,
+                    0,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+        } else {
+            pendingIntent = PendingIntent.getActivity(
+                    context,
+                    0,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT
+            );
+        }
 
         PendingIntent clearMissedCallsCountPendingIntent = PendingIntent.getBroadcast(
                 context,
